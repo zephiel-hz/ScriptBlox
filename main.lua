@@ -15,7 +15,7 @@ local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
 -- KONFIGURASI FLOWAUTH & FILE KEY
-local FLOWAUTH_LOADER_URL = "https://flowauth.net/v1/loaders/4a3a799b84b7f927699ee033c487ca36.lua"
+local FLOWAUTH_LOADER_URL = "https://flowauth.net/v1/loaders/3fe6c1e7254bd698ef096d675071e7cd.lua"
 local FLOWAUTH_GETKEY_URL = "https://flowauth.net/reward/4a3a799b84b7f927699ee033c487ca36"
 local KEY_FILE = "HorizonHub_Key.txt"
 
