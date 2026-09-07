@@ -2,7 +2,7 @@
 -- // HORIZON HUB | MULTI-GAMES LOADER + FLOWAUTH KEY SYSTEM
 -- // ==============================================================
 
--- 0. HANDSHAKE RECURSION GUARD (DIGUNAKAN SAAT VERIFIKASI KEY DENGAN FLOWAUTH)
+-- 0. RECURSION GUARD UNTUK VERIFIKASI KEY DENGAN FLOWAUTH
 if _G.HORIZON_AUTH_CHECK then
     _G.HORIZON_KEY_VALID = true
     return
@@ -14,13 +14,13 @@ local StarterGui = game:GetService("StarterGui")
 local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
--- KONFIGURASI FLOWAUTH & FILE KEY
-local FLOWAUTH_LOADER_URL = "https://flowauth.net/v1/loaders/3fe6c1e7254bd698ef096d675071e7cd.lua"
-local FLOWAUTH_GETKEY_URL = "https://flowauth.net/reward/4a3a799b84b7f927699ee033c487ca36"
+-- KONFIGURASI FLOWAUTH & FILE KEY (HASH PROYEK BARU)
+local FLOWAUTH_LOADER_URL = "https://flowauth.net/v1/loaders/20bd5483c53f3f0d141280b940e8b683.lua"
+local FLOWAUTH_GETKEY_URL = "https://flowauth.net/reward/20bd5483c53f3f0d141280b940e8b683"
 local KEY_FILE = "HorizonHub_Key.txt"
 
 -- 1. DAFTAR GAME DIDUKUNG
-local SUPPORTED_GAMES: { [number]: { Name: string, Script: any } } = {
+local SUPPORTED_GAMES = {
     [133341016381877] = {
         Name = "Mount RNG",
         Script = 'loadstring(game:HttpGet("https://encrypt-x.pages.dev/Scripts?Id=1892450044143"))("1892450044143")',
@@ -57,7 +57,7 @@ end
 -- 3. AUTO-PATCH MOUNT RNG CRASH
 local function applyGameCompatibilityPatches()
     if game.PlaceId == 133341016381877 or game.GameId == 6466404775 then
-        local function ensureMesh(part: Instance)
+        local function ensureMesh(part)
             if part:IsA("BasePart") and part.Name == "Body" and not part:FindFirstChild("Mesh") then
                 local m = Instance.new("SpecialMesh")
                 m.Name = "Mesh"
@@ -76,10 +76,10 @@ local function applyGameCompatibilityPatches()
 end
 
 -- 4. LOAD WIND UI LIBRARY
-local WindUI: any = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
+local WindUI = loadstring(game:HttpGet("https://raw.githubusercontent.com/Footagesus/WindUI/main/dist/main.lua"))()
 
 -- 5. FUNGSI VERIFIKASI KEY LANGSUNG KE FLOWAUTH SERVER
-local function verifyKeyWithFlowAuth(candidateKey: string): (boolean, string)
+local function verifyKeyWithFlowAuth(candidateKey)
     if not candidateKey or candidateKey:gsub("%s+", "") == "" then
         return false, "Key tidak boleh kosong."
     end
@@ -119,7 +119,7 @@ end
 local openMainHubWindow
 local openKeySystemWindow
 
--- 6. MAIN HUB WINDOW
+-- 6. MAIN HUB WINDOW (DASHBOARD)
 openMainHubWindow = function()
     local MainWindow = WindUI:CreateWindow({
         Title = "Horizon Hub",
@@ -221,7 +221,7 @@ openMainHubWindow = function()
         Title = "Auto Close Loader",
         Desc = "Tutup jendela otomatis saat script diluncurkan",
         Value = true,
-        Callback = function(val: boolean)
+        Callback = function(val)
             autoClose = val
         end,
     })
@@ -272,7 +272,7 @@ openMainHubWindow = function()
 
     local ping = "N/A"
     pcall(function()
-        local stats: any = game:GetService("Stats")
+        local stats = game:GetService("Stats")
         local net = stats:FindFirstChild("Network")
         if net and net:FindFirstChild("ServerStatsItem") and net.ServerStatsItem:FindFirstChild("Data Ping") then
             ping = tostring(math.floor(net.ServerStatsItem["Data Ping"]:GetValue())) .. " ms"
@@ -292,7 +292,7 @@ openMainHubWindow = function()
         Desc = "Pilih skema warna antarmuka",
         Values = { "Midnight", "Dark", "Indigo", "Emerald", "Rose", "Violet", "Sky", "Amber" },
         Value = "Midnight",
-        Callback = function(theme: string)
+        Callback = function(theme)
             pcall(function() WindUI:SetTheme(theme) end)
         end,
     })
@@ -322,8 +322,8 @@ openMainHubWindow = function()
     MainWindow:SelectTab(1)
 end
 
--- 7. KEY SYSTEM WINDOW (MUNCUL JIKA BELUM ADA KEY / KEY SUDAH DIHAPUS DI FLOWAUTH)
-openKeySystemWindow = function(noticeMessage: string?)
+-- 7. KEY SYSTEM WINDOW (MUNCUL JIKA BELUM ADA KEY / KEY DIHAPUS DI FLOWAUTH)
+openKeySystemWindow = function(noticeMessage)
     local KeyWindow = WindUI:CreateWindow({
         Title = "Horizon Hub",
         Author = "Key Authentication",
@@ -370,7 +370,7 @@ openKeySystemWindow = function(noticeMessage: string?)
         Desc = "Tempel access key Anda di sini",
         Placeholder = "Masukkan key di sini...",
         Value = "",
-        Callback = function(val: string)
+        Callback = function(val)
             enteredKey = val:gsub("%s+", "")
         end,
     })
@@ -483,13 +483,11 @@ local function initLoader()
     end)
 
     if hasSavedKey then
-        -- Verifikasi key tersimpan langsung ke FlowAuth
         task.spawn(function()
             local isValid, msg = verifyKeyWithFlowAuth(savedKey)
             if isValid then
                 openMainHubWindow()
             else
-                -- Key tidak match atau sudah dihapus di FlowAuth!
                 pcall(function()
                     if delfile and isfile(KEY_FILE) then
                         delfile(KEY_FILE)
@@ -499,7 +497,6 @@ local function initLoader()
             end
         end)
     else
-        -- Belum ada key sama sekali
         openKeySystemWindow()
     end
 end
