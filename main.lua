@@ -5,6 +5,7 @@
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local StarterGui = game:GetService("StarterGui")
+local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
 
 -- Executor Environment Compatibility
@@ -13,6 +14,8 @@ local getclipboard = env.getclipboard
 local setclipboard = env.setclipboard
 local toclipboard = env.toclipboard
 local identifyexecutor = env.identifyexecutor or env.getexecutorname
+local hookmetamethod = env.hookmetamethod
+local newcclosure = env.newcclosure or function(f) return f end
 local isfile = env.isfile
 local readfile = env.readfile
 local writefile = env.writefile
@@ -62,9 +65,53 @@ local FLOWAUTH_LOADER_URL = "https://flowauth.net/v1/loaders/4a3a799b84b7f927699
 local REWARD_URL = "https://flowauth.net/reward/4a3a799b84b7f927699ee033c487ca36"
 local KEY_FILE = "HorizonHub_Key.txt"
 
+-- Auto-Patch Bug Game Mount RNG ("Mesh is not a valid member of Part Body")
+local function applyGameCompatibilityPatches()
+    if game.PlaceId == 133341016381877 or game.GameId == 6466404775 then
+        print("[Horizon Hub] Mengaktifkan Compatibility Patch untuk Mount RNG...")
+
+        local function ensureMesh(part: Instance)
+            if part:IsA("BasePart") and part.Name == "Body" and not part:FindFirstChild("Mesh") then
+                local m = Instance.new("SpecialMesh")
+                m.Name = "Mesh"
+                m.Parent = part
+            end
+        end
+
+        for _, d in ipairs(Workspace:GetDescendants()) do
+            pcall(ensureMesh, d)
+        end
+
+        Workspace.DescendantAdded:Connect(function(descendant)
+            pcall(ensureMesh, descendant)
+        end)
+
+        if hookmetamethod then
+            pcall(function()
+                local oldIndex: any
+                oldIndex = hookmetamethod(game, "__index", newcclosure(function(self: any, key: any)
+                    if key == "Mesh" and typeof(self) == "Instance" and self:IsA("BasePart") then
+                        local mesh = self:FindFirstChild("Mesh") or self:FindFirstChildOfClass("SpecialMesh")
+                        if not mesh then
+                            local newMesh = Instance.new("SpecialMesh")
+                            newMesh.Name = "Mesh"
+                            pcall(function() newMesh.Parent = self end)
+                            return newMesh
+                        end
+                        return mesh
+                    end
+                    return oldIndex(self, key)
+                end))
+            end)
+        end
+    end
+end
+
 -- Fungsi untuk menjalankan script target game
 local function launchTargetGameScript()
     print("[Horizon Hub] Menjalankan script untuk game: " .. currentGame.Name)
+    applyGameCompatibilityPatches()
+
     local ok, err = pcall(function()
         if type(currentGame.Script) == "function" then
             currentGame.Script()
@@ -125,11 +172,11 @@ local KeyWindow = WindUI:CreateWindow({
     HideSearchBar = true,
     Topbar = {
         Height = 44,
-        ButtonsType = "Mac", -- macOS style traffic lights
+        ButtonsType = "Mac",
     },
     User = {
         Enabled = true,
-        Anonymous = false, -- Menampilkan avatar & nama user di sidebar bawah
+        Anonymous = false,
     },
     OpenButton = {
         Title = "Open Horizon Hub",
@@ -224,7 +271,6 @@ KeyTab:Button({
         task.spawn(function()
             local success, err = verifyKeyWithFlowAuth(enteredKey)
             if success then
-                -- Simpan key jika valid
                 if writefile then
                     pcall(writefile, KEY_FILE, enteredKey)
                 end
@@ -238,8 +284,6 @@ KeyTab:Button({
 
                 task.wait(1)
                 pcall(function() KeyWindow:Destroy() end)
-
-                -- Luncurkan script game target
                 launchTargetGameScript()
             else
                 WindUI:Notify({
